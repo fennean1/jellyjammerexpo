@@ -51,6 +51,8 @@ let speed = 300;
 
 class TileData {
   constructor(img, index, key) {
+    // The number of matches that a tile exits within.
+    this.matchMemberships = 0;
     this.index = index;
     this.fadeAnimation = new Animated.Value(1);
     this.key = key;
@@ -85,6 +87,8 @@ export default class Swappables extends Component<{}> {
 
     // Inititalize to swipe up, will change later.
     this.swipeDirection = swipeDirections.SWIPE_UP;
+
+    // Speed of the animations
     this.speed = 100;
     this.animationState = animationType.SWAP;
     this.currentDirection = rowOrCol.ROW;
@@ -94,7 +98,7 @@ export default class Swappables extends Component<{}> {
       origin: [0, 0],
       width: 0,
       height: 0,
-      tileComponents: [[]],
+      tileComponents: [],
       tileDataSource: [[new TileData()]],
       topMargin: this.props.topMargin,
       JamJarLocation: new Animated.ValueXY(),
@@ -110,10 +114,10 @@ export default class Swappables extends Component<{}> {
   }
 
   onSwipe(gestureName, gestureState) {
-    //cancelTouches = true
-
     let initialGestureX = gestureState.x0;
     let initialGestureY = gestureState.y0;
+
+    this.props.incrementTurns(-1);
 
     // Need to get convert location of swipe to an index.
 
@@ -138,7 +142,7 @@ export default class Swappables extends Component<{}> {
 
         if (j > 0) {
           this.swipeDirection = SWIPE_UP;
-          this.updateGrid(i, j, 0, -1);
+          this.swap(i, j, 0, -1);
         }
 
         break;
@@ -147,7 +151,7 @@ export default class Swappables extends Component<{}> {
 
         if (j < 4) {
           this.swipeDirection = SWIPE_DOWN;
-          this.updateGrid(i, j, 0, 1);
+          this.swap(i, j, 0, 1);
         }
 
         break;
@@ -156,7 +160,7 @@ export default class Swappables extends Component<{}> {
 
         if (i > 0) {
           this.swipeDirection = SWIPE_LEFT;
-          this.updateGrid(i, j, -1, 0);
+          this.swap(i, j, -1, 0);
         }
 
         break;
@@ -165,7 +169,7 @@ export default class Swappables extends Component<{}> {
 
         if (i < 4) {
           this.swipeDirection = SWIPE_RIGHT;
-          this.updateGrid(i, j, 1, 0);
+          this.swap(i, j, 1, 0);
         }
         break;
     }
@@ -236,6 +240,8 @@ export default class Swappables extends Component<{}> {
   condenseColumns(data, beanIndexes) {
     let dataArray = data;
 
+    console.log("condensing this data", beanIndexes);
+
     let spotsToFill = 0;
     // HARDCODED!
     for (let i = 0; i < 5; i++) {
@@ -270,21 +276,33 @@ export default class Swappables extends Component<{}> {
     return dataArray;
   }
 
+  sharedIndex(arrOne, arrTwo) {
+    let match = [];
+    arrOne.map((u, i) => {
+      arrTwo.map((v, j) => {
+        if (u[0] == v[0] && u[1] == v[1]) {
+          match = u;
+        }
+      });
+    });
+    return match;
+  }
+
+  // Test console.log("What index do each of these two arrays share? [[2,3],[2,4],[2,5]]  [[1,3],[2,3],[2,3] ]",this.shareIndex([[2,3],[2,4],[2,5]], [[2,3],[2,4],[2,5]]))
+
   containsIndexPair(arr, pair) {
     let a = arr.filter(e => e[0] == pair[0] && e[1] == pair[1]);
     return a.length !== 0;
   }
 
-  // Handles swipe events
-  updateGrid(i, j, dx, dy) {
-    if (dx == 0) {
-      this.currentDirection = rowOrCol.COLUMN;
-      this.otherDirection = rowOrCol.ROW;
-    } else if (dy == 0) {
-      this.currentDirection = rowOrCol.ROW;
-      this.otherDirection = rowOrCol.COLUMN;
-    }
+  subArraysWithThisIndex(arr, index) {
+    let awd = arr.map(row => {
+      return this.allWithIndex(row, index);
+    });
+    return awd;
+  }
 
+  swap(i, j, dx, dy) {
     let swipeBeganAt = [i, j];
     let swipeDirectedAt = [i + dx, j + dy];
 
@@ -303,176 +321,56 @@ export default class Swappables extends Component<{}> {
     newData[i][j] = swapEnder;
     newData[i + dx][j + dy] = swapStarter;
 
-    let spotForFirstObject = [i, j];
-    let spotForSecondObject = [i + dx, j + dy];
+    this.updateGrid();
+  }
 
-    let firstMatchImageType = imageType.REDJAM;
-    let secondMatchImageType = imageType.REDJAM;
-    let thirdMatchImageType = imageType.REDJAM;
+  // Handles swipe events
+  updateGrid() {
+    // The amount of jam and numbers of beans gathered in this swipe.
+    let beansThisTurn = 0;
+    let jamThisTurn = 0;
 
-    let matchesInDirectionOfSwipe = this.checkRowColForMatch(
-      [i, j],
-      this.currentDirection
-    );
-    let firstMatchesPerpedicularToSwipe = this.checkRowColForMatch(
-      [i, j],
-      this.otherDirection
-    );
-    let secondMatchesPerpedicularToSwipe = this.checkRowColForMatch(
-      [i + dx, j + dy],
-      this.otherDirection
-    );
+    //  BEGIN LOOP
 
-    let allMatchIndexes = [
-      ...matchesInDirectionOfSwipe,
-      ...firstMatchesPerpedicularToSwipe,
-      ...secondMatchesPerpedicularToSwipe
-    ];
+    let allMatches = this.allMatchesOnBoard();
 
-    // These cases assume that all matches have been cleared from the board
-    // Case: All three are Jam: Not possible
-    // Case: Two are Jam and One is A Bean
-    // Case: Two are bean and one is Jam
-    // Case: Two are bean and the other is Bean
-    // Case: One is bean and the other is Jam.
-    // Case: One is bean and the other is the same Bean (must be perpendicular)
-    // Case: One is bean and the other is a different bean (must be parallel)
-    // Case: Only one is a bean
+    let duplicates = this.returnDuplicates(allMatches);
 
-    if (allMatchIndexes.length !== 0) {
-      // Find out what jar to set this to
-
-      let jar = getJamJarFromBean(firstJamToJam);
-
-      // Handle Matches In The Swipe Direction
-      if (matchesInDirectionOfSwipe.length !== 0) {
-        console.log("Found matches in the direction of the swipe");
-        if (
-          isJam(
-            this.state.tileDataSource[matchesInDirectionOfSwipe[0][0]][
-              matchesInDirectionOfSwipe[0][1]
-            ].imageType
-          )
-        ) {
-          console.log("yes, this is jam");
-          spotForFirstObject = [0.5, 8];
+    if (duplicates.length != 0) {
+      // x is the array of matches that share an index
+      let x = duplicates.map(e => {
+        if (this.allWithIndex(allMatches, e).length > 0) {
+          return this.allWithIndex(allMatches, e);
         } else {
-          if (this.containsIndexPair(matchesInDirectionOfSwipe, swipeBeganAt)) {
-            // Asinine
-            jar = getJamJarFromBean(
-              this.state.tileDataSource[swipeBeganAt[0]][swipeBeganAt[1]]
-                .imageType
-            );
-            this.state.tileDataSource[swipeBeganAt[0]][swipeBeganAt[1]].setView(
-              jar
-            );
-            spotForFirstObject = swipeBeganAt;
-          } else if (
-            this.containsIndexPair(matchesInDirectionOfSwipe, swipeDirectedAt)
-          ) {
-            jar = getJamJarFromBean(
-              this.state.tileDataSource[swipeDirectedAt[0]][swipeDirectedAt[1]]
-                .imageType
-            );
-            this.state.tileDataSource[swipeDirectedAt[0]][
-              swipeDirectedAt[1]
-            ].setView(jar);
-            spotForFirstObject = swipeDirectedAt;
-          }
+          return [];
         }
-      }
-
-      // Handle Matches In The Direction perpendicular to the swipe
-      if (firstMatchesPerpedicularToSwipe.length !== 0) {
-        console.log("Found first perpendicular matches");
-        if (
-          isJam(
-            this.state.tileDataSource[firstMatchesPerpedicularToSwipe[0][0]][
-              firstMatchesPerpedicularToSwipe[0][1]
-            ].imageType
-          )
-        ) {
-          console.log("yes, this is jam");
-          spotForFirstObject = [0.5, 8];
-        } else {
-          // Asinine
-          jar = getJamJarFromBean(
-            this.state.tileDataSource[swipeBeganAt[0]][swipeBeganAt[1]]
-              .imageType
-          );
-          this.state.tileDataSource[swipeBeganAt[0]][swipeBeganAt[1]].setView(
-            jar
-          );
-          spotForFirstObject = swipeBeganAt;
-        }
-      }
-
-      // Handle Matches In the other direction perpendicular to the swipe
-      if (secondMatchesPerpedicularToSwipe.length !== 0) {
-        console.log("Found second perpendicular matches");
-        if (
-          isJam(
-            this.state.tileDataSource[secondMatchesPerpedicularToSwipe[0][0]][
-              secondMatchesPerpedicularToSwipe[0][1]
-            ].imageType
-          )
-        ) {
-          console.log("yes, this is jam");
-          spotForSecondObject = [0.5, 8];
-        } else {
-          // Asinine
-          jar = getJamJarFromBean(
-            this.state.tileDataSource[swipeDirectedAt[0]][swipeDirectedAt[1]]
-              .imageType
-          );
-        }
-
-        this.state.tileDataSource[swipeDirectedAt[0]][
-          swipeDirectedAt[1]
-        ].setView(jar);
-
-        spotForSecondObject = swipeDirectedAt;
-      }
-
-      // Remove the spot where the jar needs to go
-      matchesInDirectionOfSwipe = matchesInDirectionOfSwipe.filter(e => {
-        let firstAreEqual = e[0] == spotForFirstObject[0];
-        let secondAreEqual = e[1] == spotForFirstObject[1];
-        b = !(firstAreEqual && secondAreEqual);
-
-        return b;
       });
-      // Remove the spot where the jar needs to go
-      firstMatchesPerpedicularToSwipe = firstMatchesPerpedicularToSwipe.filter(
-        e => {
-          let firstAreEqual = e[0] == spotForFirstObject[0];
-          let secondAreEqual = e[1] == spotForFirstObject[1];
-          b = !(firstAreEqual && secondAreEqual);
 
-          return b;
-        }
-      );
-      // Remove the spot where the jar needs to go
-      secondMatchesPerpedicularToSwipe = secondMatchesPerpedicularToSwipe.filter(
-        e => {
-          let firstAreEqual = e[0] == spotForSecondObject[0];
-          let secondAreEqual = e[1] == spotForSecondObject[1];
-          b = !(firstAreEqual && secondAreEqual);
-
-          return b;
-        }
-      );
-
-      this.animateBeanMatch(matchesInDirectionOfSwipe, spotForFirstObject);
-      this.animateBeanMatch(
-        firstMatchesPerpedicularToSwipe,
-        spotForFirstObject
-      );
-      this.animateBeanMatch(
-        secondMatchesPerpedicularToSwipe,
-        spotForSecondObject
-      );
+      x.map(row => {
+        // Animate to the index that they share
+        let animateTo = this.sharedIndex(row[0], row[1]);
+        let jar = null;
+        row.map(match => {
+          let i = match[0][0];
+          let j = match[0][1];
+          jar = getJamJarFromBean(this.state.tileDataSource[i][j].imageType);
+          this.animateBeanMatch(match, animateTo);
+        });
+        this.state.tileDataSource[animateTo[0]][animateTo[1]].setView(jar);
+      });
+    } else {
+      allMatches.map(match => {
+        jar = getJamJarFromBean(
+          this.state.tileDataSource[match[0][0]][match[0][1]].imageType
+        );
+        this.animateBeanMatch(match, match[0]);
+        this.state.tileDataSource[match[0][0]][match[0][1]].setView(jar);
+      });
     }
+
+    allMatches = allMatches.map(match => {
+      return match.slice(1);
+    });
 
     let data = this.state.tileDataSource;
 
@@ -481,18 +379,24 @@ export default class Swappables extends Component<{}> {
       // Prepare the animation state
       this.animationState = animationType.FALL;
 
-      let indexesToProcess = [
-        ...firstMatchesPerpedicularToSwipe,
-        ...matchesInDirectionOfSwipe,
-        ...secondMatchesPerpedicularToSwipe
-      ];
+      if (jamThisTurn !== 0) {
+        this.props.animateTuffysHead();
+      }
 
       // Recolor the matches with new random colors.
-      data = this.recolorMatches(data, indexesToProcess);
 
-      data = this.condenseColumns(this.state.tileDataSource, indexesToProcess);
+      allMatches.map(match => {
+        data = this.recolorMatches(data, match);
+
+        data = this.condenseColumns(this.state.tileDataSource, match);
+      });
 
       this.pushTileDataToComponent(data);
+
+      if (this.allMatchesOnBoard().length != 0) {
+        console.log("Hello! Calling update grid again");
+        this.updateGrid();
+      }
 
       this.animationState = animationType.SWAP;
     }, 1200);
@@ -571,7 +475,6 @@ export default class Swappables extends Component<{}> {
       let rows = row.map((e, j) => {
         a.push(
           <Tile
-            update={this.updateGrid.bind(this)}
             location={e.location}
             scale={e.scale}
             key={e.key}
@@ -623,9 +526,7 @@ export default class Swappables extends Component<{}> {
       let nextItem = this.state.tileDataSource[x + dx][y + dy];
 
       if (this.isMatch(firstItem, nextItem)) {
-        console.log("found a pair!", x, y);
         consecutives.push([x, y]);
-        console.log("Consecutive indexes", consecutives);
 
         // Check if I've reached the end of the loop.
         if (i == 3) {
@@ -649,6 +550,73 @@ export default class Swappables extends Component<{}> {
     } else {
       return [];
     }
+  }
+
+  areIndexesEqual(pairOne, pairTwo) {
+    return a[0] == e[0] && a[1] == e[1];
+  }
+
+  // Returns all arrays that have an index of "index" within them. For two dimensional array.
+  allWithIndex(arr, index) {
+    let withIndex = [];
+    arr.map(row => {
+      if (this.containsIndexPair(row, index)) {
+        withIndex.push(row);
+      }
+    });
+    return withIndex;
+  }
+
+  returnDuplicates(arr) {
+    // Destructure the two dimensional array to a 1D
+    let stream = [];
+    arr.map(row => {
+      row.map(e => {
+        stream.push(e);
+      });
+    });
+
+    let dups = [];
+    let x = stream.map((e, i) => {
+      if (stream.slice(i).length > 1) {
+        let iterator = stream.slice(i + 1);
+
+        if (this.containsIndexPair(iterator, e)) {
+          dups.push(e);
+        }
+      }
+    });
+    return dups;
+  }
+
+  removeDuplicates(arr) {
+    let x = arr.map((e, i) => {
+      let iterator = x.slice(i);
+      if (this.containsIndexPair(iterator, e)) {
+        arr.splice(0, 1);
+      }
+    });
+
+    return arr;
+  }
+
+  allMatchesOnBoard() {
+    let matches = [];
+
+    for (let i = 0; i < 5; i++) {
+      // Check to find all the rows that have matches.
+      let rowMatch = this.checkRowColForMatch([0, i], rowOrCol.ROW);
+      if (rowMatch.length > 0) {
+        matches.push(rowMatch);
+      }
+      // Check to find all the columns that have matches
+      let colMatch = this.checkRowColForMatch([i, 0], rowOrCol.COLUMN);
+      if (colMatch.length > 0) {
+        matches.push(colMatch);
+      }
+    }
+
+    return matches;
   }
 
   // Gets all indexes with a specific color.

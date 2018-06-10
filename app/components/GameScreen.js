@@ -37,10 +37,14 @@ class GameScreen extends Component {
 
     this.tuffysHeadHeight = 50;
     this.topMargin = 125;
+    this.numberOfMoves = 25;
 
     this.state = {
       tuffysHeadScale: new Animated.Value(1),
-      tuffysHeadLocation: new Animated.ValueXY(0, 0)
+      tuffysHeadLocation: new Animated.ValueXY(0, 0),
+      numberOfMoves: 25,
+      jamScore: 0,
+      beanScore: 0
     };
   }
 
@@ -63,6 +67,23 @@ class GameScreen extends Component {
   // Old Redux Stuff - will need this later.
   addRecipe() {
     //this.props.myProps.addRecipe()
+  }
+
+  incrementTurns(inc) {
+    let { numberOfMoves } = this.state;
+    numberOfMoves = numberOfMoves + inc;
+    this.setState({ numberOfMoves: numberOfMoves });
+  }
+
+  updateScore(beans, jam) {
+    let { beanScore } = this.state;
+    let { jamScore } = this.state;
+
+    jamScore = jamScore + jam;
+    beanScore = beanScore + beans;
+
+    this.setState({ beanScore: beanScore });
+    this.setState({ jamScore: jamScore });
   }
 
   componentWillMount() {
@@ -93,11 +114,17 @@ class GameScreen extends Component {
     return (
       <ImageBackground source={justClouds} style={styles.backGroundImage}>
         <View style={styles.topBarAndGridContainer}>
-          <View style={styles.topBar} />
+          <View style={styles.topBar}>
+            <Text> Beans: {this.state.beanScore} </Text>
+            <Text> Jam: {this.state.jamScore} </Text>
+            <Text> Moves: {this.state.numberOfMoves}</Text>
+          </View>
           <View style={styles.gridContainer}>
             <SwappableGrid
               topMargin={this.topMargin}
               animateTuffysHead={this.animateTuffysHead.bind(this)}
+              updateScore={this.updateScore.bind(this)}
+              incrementTurns={this.incrementTurns.bind(this)}
             />
           </View>
         </View>
@@ -144,7 +171,8 @@ let styles = StyleSheet.create({
   },
   topBar: {
     marginTop: 50,
-    height: 75
+    height: 75,
+    flexDirection: "row"
     //backgroundColor: yellow
   },
   backButton: {

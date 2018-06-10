@@ -294,3 +294,62 @@
 
                                                       return filteredTotal;
                                                     }
+
+
+
+                                                    duplicates(matches) {
+                                                      let stream = [];
+
+                                                      matches.map(row => {
+                                                        row.map(e => {
+                                                          stream.push(e);
+                                                        });
+                                                      });
+
+                                                      let dups = stream.map(e => {
+                                                        let count = stream.filter(a => areIndexesEqual(a, e)).length;
+                                                        console.log("this is e in dups", e);
+                                                        if (count > 1) {
+                                                          if (shareIndex()) return e;
+                                                        } else {
+                                                          return [];
+                                                        }
+                                                      });
+
+                                                      return dups;
+                                                    }
+
+
+                                                    /* Remove the spot where the jar needs to go
+                                                    secondMatchesPerpedicularToSwipe = secondMatchesPerpedicularToSwipe.filter(
+                                                      e => {
+                                                        let firstAreEqual = e[0] == spotForSecondObject[0];
+                                                        let secondAreEqual = e[1] == spotForSecondObject[1];
+                                                        b = !(firstAreEqual && secondAreEqual);
+
+                                                        return b;
+                                                      }
+                                                    );
+                                                    */
+
+                                                    /*
+                                                    allMatches.map(match => {
+                                                      let filteredMatch = match.filter(e => {
+                                                        let firstAreEqual = e[0] == match[0];
+                                                        let secondAreEqual = e[1] == match[1];
+                                                        let boolean = !(firstAreEqual && secondAreEqual);
+
+                                                        return boolean;
+                                                      });
+                                                      filteredMatches.push(filteredMatch);
+                                                      return;
+                                                    });
+                                                */
+
+
+                                                    let matchCounts = this.state.tileDataSource.map(row => {
+                                                      let x = row.map(e => {
+                                                        return e.matchMemberships;
+                                                      });
+                                                      return x;
+                                                    });
