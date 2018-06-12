@@ -79,6 +79,24 @@ const rowOrCol = {
   COLUMN: 1
 };
 
+const beans = [
+  imageType.BLUEJELLYBEAN,
+  imageType.PINKJELLYBEAN,
+  imageType.PURPLEJELLYBEAN,
+  imageType.YELLOWJELLYBEAN,
+  imageType.ORANGEJELLYBEAN,
+  imageType.GREENJELLYBEAN,
+  imageType.REDJELLYBEAN,
+  imageType.REDJAM,
+  imageType.BLUEJAM,
+  imageType.ORANGEJAM,
+  imageType.PURPLEJAM,
+  imageType.GREENJAM,
+  imageType.PINKJAM,
+  imageType.PURPLEJAM,
+  imageType.YELLOWJAM
+];
+
 var cancelTouches = false;
 
 export default class Swappables extends Component<{}> {
@@ -176,12 +194,12 @@ export default class Swappables extends Component<{}> {
   }
 
   // data - the array of
-  pushTileDataToComponent(tileData) {
+  pushTileDataToComponent() {
     console.log("Pushing Tile Data");
 
     var a = [];
     // This creates the array of Tile components that is stored as a state variable.
-    tileData.map((row, i) => {
+    this.state.tileDataSource.map((row, i) => {
       let rows = row.map((e, j) => {
         a.push(
           <Tile
@@ -220,14 +238,14 @@ export default class Swappables extends Component<{}> {
       let j = e[1];
 
       Animated.sequence([
-        Animated.delay(400),
+        Animated.delay(350),
         Animated.timing(this.state.tileDataSource[i][j].scale, {
-          toValue: 1.1,
-          duration: 200
+          toValue: 1.05,
+          duration: 150
         }),
         Animated.timing(this.state.tileDataSource[i][j].scale, {
           toValue: 1,
-          duration: 200
+          duration: 150
         }),
         Animated.timing(this.state.tileDataSource[i][j].location, {
           toValue: { x: locationToAnimateTo[0], y: locationToAnimateTo[1] },
@@ -237,9 +255,7 @@ export default class Swappables extends Component<{}> {
     }
   }
 
-  condenseColumns(data, beanIndexes) {
-    let dataArray = data;
-
+  condenseColumns(beanIndexes) {
     console.log("condensing this data", beanIndexes);
 
     let spotsToFill = 0;
@@ -258,22 +274,20 @@ export default class Swappables extends Component<{}> {
           // Increment the spots to fill...since we found a spot to fill.
           spotsToFill++;
           // Place the location above the top of the screen for when it "falls"
-          dataArray[i][j].location.setValue({
+          this.state.tileDataSource[i][j].location.setValue({
             x: TILE_WIDTH * i,
             y: -3 * TILE_WIDTH
           });
         } else if (spotsToFill > 0) {
           // Swap
-          const currentSpot = dataArray[i][j];
-          const newSpot = dataArray[i][j + spotsToFill];
+          const currentSpot = this.state.tileDataSource[i][j];
+          const newSpot = this.state.tileDataSource[i][j + spotsToFill];
 
-          dataArray[i][j] = newSpot;
-          dataArray[i][j + spotsToFill] = currentSpot;
+          this.state.tileDataSource[i][j] = newSpot;
+          this.state.tileDataSource[i][j + spotsToFill] = currentSpot;
         }
       }
     }
-
-    return dataArray;
   }
 
   sharedIndex(arrOne, arrTwo) {
@@ -295,11 +309,26 @@ export default class Swappables extends Component<{}> {
     return a.length !== 0;
   }
 
-  subArraysWithThisIndex(arr, index) {
-    let awd = arr.map(row => {
-      return this.allWithIndex(row, index);
-    });
-    return awd;
+  //Remove the spot where the jar needs to go
+  removeIndexes(arr, indexes) {
+    let filteredArray = [];
+
+    if (indexes.length == 0) {
+      return arr;
+    } else {
+      indexes.map(index => {
+        filteredArray = arr.filter(e => {
+          let firstAreEqual = e[0] == index[0];
+          let secondAreEqual = e[1] == index[1];
+          b = !(firstAreEqual && secondAreEqual);
+
+          return b;
+        });
+        arr = filteredArray;
+      });
+
+      return filteredArray;
+    }
   }
 
   swap(i, j, dx, dy) {
@@ -324,6 +353,8 @@ export default class Swappables extends Component<{}> {
     this.updateGrid();
   }
 
+  // TODO: Have the
+
   // Handles swipe events
   updateGrid() {
     // The amount of jam and numbers of beans gathered in this swipe.
@@ -334,72 +365,98 @@ export default class Swappables extends Component<{}> {
 
     let allMatches = this.allMatchesOnBoard();
 
-    let duplicates = this.returnDuplicates(allMatches);
+    if (allMatches.length != 0) {
+      let duplicates = this.returnDuplicates(allMatches);
 
-    if (duplicates.length != 0) {
-      // x is the array of matches that share an index
-      let x = duplicates.map(e => {
-        if (this.allWithIndex(allMatches, e).length > 0) {
-          return this.allWithIndex(allMatches, e);
-        } else {
-          return [];
-        }
-      });
-
-      x.map(row => {
-        // Animate to the index that they share
-        let animateTo = this.sharedIndex(row[0], row[1]);
-        let jar = null;
-        row.map(match => {
-          let i = match[0][0];
-          let j = match[0][1];
-          jar = getJamJarFromBean(this.state.tileDataSource[i][j].imageType);
-          this.animateBeanMatch(match, animateTo);
+      let indexesToRemove = [];
+      let jars = [];
+      if (duplicates.length != 0) {
+        // x is the array of matches that share an index
+        let withSharedIndexes = duplicates.map(e => {
+          let allWithIndex = this.allWithIndex(allMatches, e);
+          if (allWithIndex.length > 0) {
+            return allWithIndex;
+          } else {
+            return [];
+          }
         });
-        this.state.tileDataSource[animateTo[0]][animateTo[1]].setView(jar);
+
+        withSharedIndexes.map((row, i) => {
+          // Animate to the index that they share
+          let animateTo = this.sharedIndex(row[0], row[1]);
+          let jar = null;
+          row.map(match => {
+            let i = match[0][0];
+            let j = match[0][1];
+            if (isJam(this.state.tileDataSource[i][j].imageType)) {
+              this.animateBeanMatch(match, [1, 10]);
+              jamThisTurn += match.length;
+              this.props.animateTuffysHead();
+            } else {
+              jar = getJamJarFromBean(
+                this.state.tileDataSource[i][j].imageType
+              );
+              this.state.tileDataSource[animateTo[0]][animateTo[1]].setView(
+                jar
+              );
+              this.animateBeanMatch(match, animateTo);
+              beansThisTurn += match.length;
+              indexesToRemove.push(animateTo);
+            }
+          });
+        });
+      } else {
+        allMatches.map(match => {
+          if (
+            isJam(this.state.tileDataSource[match[0][0]][match[0][1]].imageType)
+          ) {
+            this.animateBeanMatch(match, [1, 10]);
+            this.props.animateTuffysHead();
+            jamThisTurn += match.length;
+          } else {
+            jar = getJamJarFromBean(
+              this.state.tileDataSource[match[0][0]][match[0][1]].imageType
+            );
+            this.state.tileDataSource[match[0][0]][match[0][1]].setView(jar);
+            this.animateBeanMatch(match, match[0]);
+            beansThisTurn += match.length;
+            indexesToRemove.push(match[0]);
+          }
+        });
+      }
+
+      this.props.updateScore(beansThisTurn, jamThisTurn);
+
+      // TODO: WRite a function that removes an array of indexes so I don't have to keep slicing away and I can control what gets "condensed"
+
+      allMatches = allMatches.map(match => {
+        return this.removeIndexes(match, indexesToRemove);
       });
-    } else {
-      allMatches.map(match => {
-        jar = getJamJarFromBean(
-          this.state.tileDataSource[match[0][0]][match[0][1]].imageType
-        );
-        this.animateBeanMatch(match, match[0]);
-        this.state.tileDataSource[match[0][0]][match[0][1]].setView(jar);
-      });
+
+      // Waits for "animate match" to complete.
+      setTimeout(() => {
+        // Prepare the animation state
+        this.animationState = animationType.FALL;
+
+        // Recolor the matches with new random colors.
+
+        allMatches.map(match => {
+          this.recolorMatches(match);
+          this.condenseColumns(match);
+        });
+
+        this.pushTileDataToComponent();
+
+        setTimeout(() => {
+          if (this.allMatchesOnBoard().length != 0) {
+            console.log("Hello! Calling update grid again");
+            this.updateGrid();
+          }
+        }, 1200);
+
+        this.animationState = animationType.SWAP;
+      }, 1200);
     }
-
-    allMatches = allMatches.map(match => {
-      return match.slice(1);
-    });
-
-    let data = this.state.tileDataSource;
-
-    // Waits for "animate match" to complete.
-    setTimeout(() => {
-      // Prepare the animation state
-      this.animationState = animationType.FALL;
-
-      if (jamThisTurn !== 0) {
-        this.props.animateTuffysHead();
-      }
-
-      // Recolor the matches with new random colors.
-
-      allMatches.map(match => {
-        data = this.recolorMatches(data, match);
-
-        data = this.condenseColumns(this.state.tileDataSource, match);
-      });
-
-      this.pushTileDataToComponent(data);
-
-      if (this.allMatchesOnBoard().length != 0) {
-        console.log("Hello! Calling update grid again");
-        this.updateGrid();
-      }
-
-      this.animationState = animationType.SWAP;
-    }, 1200);
   }
 
   componentDidUpdate() {
@@ -666,45 +723,14 @@ export default class Swappables extends Component<{}> {
     });
   }
 
-  recolorMatches(data, neighbors) {
-    let x = data.map((row, i) => {
-      let y = row.map((e, j) => {
-        const beans = [
-          imageType.BLUEJELLYBEAN,
-          imageType.PINKJELLYBEAN,
-          imageType.PURPLEJELLYBEAN,
-          imageType.YELLOWJELLYBEAN,
-          imageType.ORANGEJELLYBEAN,
-          imageType.GREENJELLYBEAN,
-          imageType.REDJELLYBEAN,
-          imageType.REDJAM,
-          imageType.BLUEJAM,
-          imageType.ORANGEJAM,
-          imageType.PURPLEJAM,
-          imageType.GREENJAM,
-          imageType.PINKJAM,
-          imageType.PURPLEJAM,
-          imageType.YELLOWJAM
-        ];
+  recolorMatches(neighbors) {
+    neighbors.map(e => {
+      let i = e[0];
+      let j = e[1];
+      let randIndex = this.getRandomInt(7);
 
-        let randIndex = this.getRandomInt(7);
-
-        let n = neighbors.filter(e => {
-          return i == e[0] && j == e[1];
-        });
-
-        if (n.length != 0) {
-          e.setView(beans[randIndex]);
-          return e;
-        } else {
-          return e;
-        }
-      });
-
-      return y;
+      this.state.tileDataSource[i][j].setView(beans[randIndex]);
     });
-
-    return x;
   }
 
   render() {

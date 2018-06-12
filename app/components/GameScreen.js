@@ -38,12 +38,14 @@ class GameScreen extends Component {
     this.tuffysHeadHeight = 50;
     this.topMargin = 125;
     this.numberOfMoves = 25;
+    this.gameOver = false;
 
     this.state = {
       tuffysHeadScale: new Animated.Value(1),
       tuffysHeadLocation: new Animated.ValueXY(0, 0),
       numberOfMoves: 25,
       jamScore: 0,
+      totalScore: 0,
       beanScore: 0
     };
   }
@@ -64,15 +66,13 @@ class GameScreen extends Component {
     ]).start();
   }
 
-  // Old Redux Stuff - will need this later.
-  addRecipe() {
-    //this.props.myProps.addRecipe()
-  }
-
   incrementTurns(inc) {
     let { numberOfMoves } = this.state;
     numberOfMoves = numberOfMoves + inc;
     this.setState({ numberOfMoves: numberOfMoves });
+    if (this.state.numberOfMoves == 0) {
+      this.gameOver = true;
+    }
   }
 
   updateScore(beans, jam) {
@@ -81,9 +81,14 @@ class GameScreen extends Component {
 
     jamScore = jamScore + jam;
     beanScore = beanScore + beans;
+    totalScore = beanScore * (jamScore + 1);
 
     this.setState({ beanScore: beanScore });
     this.setState({ jamScore: jamScore });
+    this.setState({ totalScore: totalScore });
+
+    console.log(this.props.screenProps.incrementRedJellyBean());
+    console.log(this.props.screenProps.redBeanCount);
   }
 
   componentWillMount() {
@@ -111,14 +116,29 @@ class GameScreen extends Component {
       </Animated.View>
     );
 
+    const descriptor = gameOver => {
+      if (!gameOver) {
+        return (
+          <View style={styles.topBar}>
+            <Text style={styles.text}>Score: {this.state.totalScore}</Text>
+            <Text style={styles.text}>Turns: {this.state.numberOfMoves}</Text>
+          </View>
+        );
+      } else {
+        return (
+          <View style={styles.topBar}>
+            <Text style={styles.text}>
+              Final Score: {this.state.totalScore}
+            </Text>
+          </View>
+        );
+      }
+    };
+
     return (
       <ImageBackground source={justClouds} style={styles.backGroundImage}>
         <View style={styles.topBarAndGridContainer}>
-          <View style={styles.topBar}>
-            <Text> Beans: {this.state.beanScore} </Text>
-            <Text> Jam: {this.state.jamScore} </Text>
-            <Text> Moves: {this.state.numberOfMoves}</Text>
-          </View>
+          {descriptor(this.gameOver)}
           <View style={styles.gridContainer}>
             <SwappableGrid
               topMargin={this.topMargin}
@@ -172,6 +192,7 @@ let styles = StyleSheet.create({
   topBar: {
     marginTop: 50,
     height: 75,
+    justifyContent: "center",
     flexDirection: "row"
     //backgroundColor: yellow
   },
@@ -185,7 +206,10 @@ let styles = StyleSheet.create({
     marginTop: 25,
     marginLeft: 5,
     marginRight: 5,
-    textAlign: "center"
+    //backgroundColor: "#ff51f3",
+    textAlign: "center",
+    fontStyle: "ChalkBoard SE",
+    fontSize: 30
     //color       : '#fff'
   },
   container: {
@@ -201,12 +225,3 @@ let styles = StyleSheet.create({
 });
 
 module.exports = GameScreen;
-
-// Connecting redux stuff/crap
-function mapDispatchToProps(dispatch) {
-  return bindActionCreators(ActionCreators, dispatch);
-}
-
-export default connect(state => {
-  return { recipeCount: state.recipeCount };
-}, mapDispatchToProps)(GameScreen);
