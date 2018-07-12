@@ -7,6 +7,7 @@ import SwappableGrid from "../components/SwappableGrid";
 //import {App} from './App';
 import Dimensions from "Dimensions";
 
+import TurnIndicator from "../components/TurnIndicator";
 import ImageTypes from "../components/ImageTypes";
 
 import { getJamJarFromBean } from "../components/JamFunctions";
@@ -36,17 +37,20 @@ class GameScreen extends Component {
     super(props);
 
     this.tuffysHeadHeight = 50;
-    this.topMargin = 125;
-    this.numberOfMoves = 25;
+    this.topMargin = 2.5 * TILE_WIDTH;
+
     this.gameOver = false;
 
     this.state = {
       tuffysHeadScale: new Animated.Value(1),
+      gameModalScale: new Animated.Value(1),
       tuffysHeadLocation: new Animated.ValueXY(0, 0),
+      gameModalLocation: new Animated.ValueXY(0, 0),
       numberOfMoves: 25,
       jamScore: 0,
       totalScore: 0,
-      beanScore: 0
+      beanScore: 0,
+      turnScale: new Animated.Value(1)
     };
   }
 
@@ -54,34 +58,78 @@ class GameScreen extends Component {
     Animated.sequence([
       Animated.delay(100),
       Animated.spring(this.state.tuffysHeadLocation.y, {
-        toValue: 0.3 * TILE_WIDTH,
+        toValue: windowHeight - 2 * TILE_WIDTH,
         friction: 5,
         duration: 1000
       }),
       Animated.timing(this.state.tuffysHeadLocation.y, {
-        toValue: TILE_WIDTH * 3,
+        toValue: windowHeight,
         friction: 10,
         duration: 500
       })
     ]).start();
   }
 
+  endGame() {
+    this.gameOver = true;
+    Animated.sequence([
+      Animated.delay(100),
+      Animated.spring(this.state.gameModalLocation.y, {
+        toValue: 3 * TILE_WIDTH,
+        friction: 5,
+        duration: 1000
+      })
+    ]).start();
+
+    Animated.sequence([
+      Animated.delay(100),
+      Animated.spring(this.state.tuffysHeadLocation.y, {
+        toValue: windowHeight - 2 * TILE_WIDTH,
+        friction: 5,
+        duration: 1000
+      })
+    ]).start();
+  }
+
   incrementTurns(inc) {
+    let scale = 1;
     let { numberOfMoves } = this.state;
     numberOfMoves = numberOfMoves + inc;
     this.setState({ numberOfMoves: numberOfMoves });
     if (this.state.numberOfMoves == 0) {
-      this.gameOver = true;
+      this.endGame();
     }
+    if (inc < 0) {
+      scale = 0.8;
+    } else if (inc > 0) {
+      scale = 1.5;
+    }
+
+    Animated.sequence([
+      Animated.timing(this.state.turnScale, {
+        toValue: scale,
+        duration: 200
+      }),
+      Animated.timing(this.state.turnScale, {
+        toValue: 1.0,
+        duration: 150
+      })
+    ]).start();
   }
 
   updateScore(beans, jam) {
     let { beanScore } = this.state;
     let { jamScore } = this.state;
 
-    jamScore = jamScore + jam;
-    beanScore = beanScore + beans;
-    totalScore = beanScore * (jamScore + 1);
+    let inc = 0;
+
+    if (beans != 0) {
+      inc = 3 * (beans - 2);
+    }
+
+    jamScore = jamScore + 3 * jam;
+    beanScore = beanScore + inc;
+    totalScore = jamScore + beanScore;
 
     this.setState({ beanScore: beanScore });
     this.setState({ jamScore: jamScore });
@@ -94,7 +142,11 @@ class GameScreen extends Component {
   componentWillMount() {
     this.state.tuffysHeadLocation.setValue({
       x: 0,
-      y: 2 * TILE_WIDTH
+      y: windowHeight
+    });
+    this.state.gameModalLocation.setValue({
+      x: 0,
+      y: -5 * TILE_WIDTH
     });
   }
 
@@ -108,28 +160,70 @@ class GameScreen extends Component {
 
     let scale = this.state.tuffysHeadScale;
 
+    let backButton = (
+      <TouchableHighlight
+        style={styles.backButton}
+        onPress={() => navigate("Root")}
+      >
+        <Image style={styles.backButtonImage} source={ImageTypes.BACKARROW} />
+      </TouchableHighlight>
+    );
+
     let topOfTuffyComponent = (
       <Animated.View
-        style={[{ transform: [{ translateX }, { translateY }, { scale }] }]}
+        style={[
+          styles.tuffysHeadContainer,
+          { transform: [{ translateX }, { translateY }, { scale }] }
+        ]}
       >
         <Image style={styles.tuffysHead} source={ImageTypes.TOPOFTUFFYSHEAD} />
       </Animated.View>
     );
 
+    [translateX, translateY] = [
+      this.state.gameModalLocation.x,
+      this.state.gameModalLocation.y
+    ];
+
+    scale = this.state.gameModalScale;
+
+    let gameOverModal = (
+      <Animated.View
+        style={[
+          styles.gameOverModal,
+          { transform: [{ translateX }, { translateY }, { scale }] }
+        ]}
+      >
+        <View>
+          <Text style={styles.scoreText}>Score: {this.state.totalScore}</Text>
+          <Button title={"Play Again?"} onPress={() => navigate("Root")} />
+        </View>
+      </Animated.View>
+    );
+
+    // TODO: D.R.Y.
     const descriptor = gameOver => {
       if (!gameOver) {
         return (
           <View style={styles.topBar}>
-            <Text style={styles.text}>Score: {this.state.totalScore}</Text>
-            <Text style={styles.text}>Turns: {this.state.numberOfMoves}</Text>
+            {backButton}
+            <Text style={styles.text}>{this.state.totalScore} pts</Text>
+            <View style={styles.turnIndicator}>
+              <TurnIndicator
+                scale={this.state.turnScale}
+                text={this.state.numberOfMoves}
+              />
+            </View>
           </View>
         );
       } else {
         return (
           <View style={styles.topBar}>
-            <Text style={styles.text}>
-              Final Score: {this.state.totalScore}
-            </Text>
+            {backButton}
+            <Text style={styles.scoreText} />
+            <View style={styles.turnIndicator}>
+              <TurnIndicator scale={this.state.turnScale} text={""} />
+            </View>
           </View>
         );
       }
@@ -137,18 +231,18 @@ class GameScreen extends Component {
 
     return (
       <ImageBackground source={justClouds} style={styles.backGroundImage}>
-        <View style={styles.topBarAndGridContainer}>
-          {descriptor(this.gameOver)}
-          <View style={styles.gridContainer}>
-            <SwappableGrid
-              topMargin={this.topMargin}
-              animateTuffysHead={this.animateTuffysHead.bind(this)}
-              updateScore={this.updateScore.bind(this)}
-              incrementTurns={this.incrementTurns.bind(this)}
-            />
-          </View>
+        {descriptor(this.gameOver)}
+        <View style={styles.gridContainer}>
+          <SwappableGrid
+            gameOver={this.gameOver}
+            topMargin={this.topMargin}
+            animateTuffysHead={this.animateTuffysHead.bind(this)}
+            updateScore={this.updateScore.bind(this)}
+            incrementTurns={this.incrementTurns.bind(this)}
+          />
         </View>
         {topOfTuffyComponent}
+        {gameOverModal}
       </ImageBackground>
     );
   }
@@ -170,57 +264,87 @@ let orange = colored ? "#ff7644" : "#ffffff";
 let pink = colored ? "#ff51f3" : "#ffffff";
 
 let styles = StyleSheet.create({
-  footer: {
-    height: 2 * TILE_WIDTH
-    //backgroundColor: orange
+  backButton: {
+    flex: 1
+  },
+  backButtonImage: {
+    height: 0.8 * TILE_WIDTH,
+    width: 0.8 * TILE_WIDTH
+  },
+  turnIndicator: {
+    flex: 1,
+    //backgroundColor: "blue",
+    alignItems: "center"
   },
   backGroundImage: {
     width: "100%",
     height: "100%",
-    flexDirection: "column"
+    flexDirection: "column",
+    alignItems: "center"
   },
   topBarAndGridContainer: {
     flex: 1,
-    flexDirection: "column"
+    flexDirection: "column",
+    alignItems: "center"
     //backgroundColor: pink
   },
+  bottomBar: {
+    alignItems: "center"
+    //backgroundColor: "grey"
+  },
   gridContainer: {
-    flex: 1,
+    height: 5 * TILE_WIDTH,
+    width: 5 * TILE_WIDTH,
     alignItems: "center"
     //backgroundColor: blue
   },
   topBar: {
-    marginTop: 50,
-    height: 75,
-    justifyContent: "center",
+    marginTop: TILE_WIDTH,
+    height: 1.5 * TILE_WIDTH,
     flexDirection: "row"
     //backgroundColor: yellow
   },
-  backButton: {
-    marginTop: 30,
-    marginLeft: 10,
-    height: windowWidth / 10,
-    width: windowWidth / 10
-  },
   text: {
-    marginTop: 25,
-    marginLeft: 5,
-    marginRight: 5,
+    flex: 3,
     //backgroundColor: "#ff51f3",
     textAlign: "center",
-    fontStyle: "ChalkBoard SE",
+    //fontStyle: "ChalkBoard SE",
     fontSize: 30
     //color       : '#fff'
   },
-  container: {
-    height: 350,
-    width: 350
-    //backgroundColor:'#2c3e50'
+  backArrow: {
+    fontSize: 50,
+    fontSize: "ChalkBoard SE"
   },
-  tuffysHead: {
+  leaveGameButton: {
+    width: TILE_WIDTH,
+    height: TILE_WIDTH / 3
+  },
+  scoreText: {
+    alignItems: "center",
+    textAlign: "center",
+    fontSize: TILE_WIDTH / 2
+  },
+  gameOverModal: {
+    position: "absolute",
+    height: 4 * TILE_WIDTH,
+    width: 4 * TILE_WIDTH,
+    backgroundColor: "white",
+    borderRadius: TILE_WIDTH,
+    flexDirection: "column",
+    justifyContent: "center"
+  },
+  tuffysHeadContainer: {
+    position: "absolute",
     height: 2 * TILE_WIDTH,
     width: 3 * TILE_WIDTH
-    //backgroundColor: "#ffffff"
+    //backgroundColor: "#c00ffe"
+  },
+  tuffysHead: {
+    position: "absolute",
+    height: 2 * TILE_WIDTH,
+    width: 3 * TILE_WIDTH
+    //backgroundColor: "#c00ffe"
   }
 });
 

@@ -97,8 +97,6 @@ const beans = [
   imageType.YELLOWJAM
 ];
 
-var cancelTouches = false;
-
 export default class Swappables extends Component<{}> {
   constructor(props) {
     super(props);
@@ -107,22 +105,19 @@ export default class Swappables extends Component<{}> {
     this.swipeDirection = swipeDirections.SWIPE_UP;
 
     // Speed of the animations
-    this.speed = 100;
+    this.speed = 100; // Rate at which the animation occurs.
     this.origin = [];
     this.animationState = animationType.SWAP;
     this.currentDirection = rowOrCol.ROW;
     this.otherDirection = rowOrCol.COLUMN;
+    this.cancelTouches = false;
 
     this.previousSwappedIndexes = [];
     this.shouldReimburseForSwap = true;
 
     this.state = {
-      origin: [0, 0],
       tileComponents: [],
-      tileDataSource: this.initializeDataSource(),
-      topMargin: this.props.topMargin,
-      JamJarScaleX: new Animated.Value(1),
-      JamJarScaleY: new Animated.Value(1)
+      tileDataSource: this.initializeDataSource()
     };
   }
 
@@ -131,62 +126,65 @@ export default class Swappables extends Component<{}> {
   }
 
   onSwipe(gestureName, gestureState) {
-    let initialGestureX = gestureState.x0;
-    let initialGestureY = gestureState.y0;
+    console.log("Hello I've been Swiped");
+    if (this.cancelTouches == false && this.props.gameOver == false) {
+      let initialGestureX = gestureState.x0;
+      let initialGestureY = gestureState.y0;
 
-    // Need to get convert location of swipe to an index.
+      // Need to get convert location of swipe to an index.
 
-    let i = Math.round(
-      (initialGestureX - this.origin[0] - 0.5 * TILE_WIDTH) / TILE_WIDTH
-    );
-    let j = Math.round(
-      (initialGestureY -
-        this.state.topMargin -
-        this.origin[1] -
-        0.5 * TILE_WIDTH) /
-        TILE_WIDTH
-    );
+      console.log("x origin", this.origin[0]);
 
-    const { SWIPE_UP, SWIPE_DOWN, SWIPE_LEFT, SWIPE_RIGHT } = swipeDirections;
-    this.setState({ gestureName: gestureName });
+      let i = Math.round((initialGestureX - TILE_WIDTH) / TILE_WIDTH);
+      let j = Math.round(
+        (initialGestureY -
+          this.props.topMargin -
+          this.origin[1] -
+          0.5 * TILE_WIDTH) /
+          TILE_WIDTH
+      );
 
-    //  TODO: Make sure that the boundary conditions 0 and 4 aren't HARDCODED
-    switch (gestureName) {
-      case SWIPE_UP:
-        console.log("An upward swipe has been registered");
+      const { SWIPE_UP, SWIPE_DOWN, SWIPE_LEFT, SWIPE_RIGHT } = swipeDirections;
+      this.setState({ gestureName: gestureName });
 
-        if (j > 0) {
-          this.swipeDirection = SWIPE_UP;
-          this.swap(i, j, 0, -1);
-        }
+      //  TODO: Make sure that the boundary conditions 0 and 4 aren't HARDCODED
+      switch (gestureName) {
+        case SWIPE_UP:
+          console.log("An upward swipe has been registered");
 
-        break;
-      case SWIPE_DOWN:
-        console.log("A downward swipe has been registered");
+          if (j > 0) {
+            this.swipeDirection = SWIPE_UP;
+            this.swap(i, j, 0, -1);
+          }
 
-        if (j < 4) {
-          this.swipeDirection = SWIPE_DOWN;
-          this.swap(i, j, 0, 1);
-        }
+          break;
+        case SWIPE_DOWN:
+          console.log("A downward swipe has been registered");
 
-        break;
-      case SWIPE_LEFT:
-        console.log("A left swipe has been registered");
+          if (j < 4) {
+            this.swipeDirection = SWIPE_DOWN;
+            this.swap(i, j, 0, 1);
+          }
 
-        if (i > 0) {
-          this.swipeDirection = SWIPE_LEFT;
-          this.swap(i, j, -1, 0);
-        }
+          break;
+        case SWIPE_LEFT:
+          console.log("A left swipe has been registered");
 
-        break;
-      case SWIPE_RIGHT:
-        console.log("A right swipe has been registered");
+          if (i > 0) {
+            this.swipeDirection = SWIPE_LEFT;
+            this.swap(i, j, -1, 0);
+          }
 
-        if (i < 4) {
-          this.swipeDirection = SWIPE_RIGHT;
-          this.swap(i, j, 1, 0);
-        }
-        break;
+          break;
+        case SWIPE_RIGHT:
+          console.log("A right swipe has been registered");
+
+          if (i < 4) {
+            this.swipeDirection = SWIPE_RIGHT;
+            this.swap(i, j, 1, 0);
+          }
+          break;
+      }
     }
   }
 
@@ -280,7 +278,7 @@ export default class Swappables extends Component<{}> {
           toValue: { x: locationToAnimateTo[0], y: locationToAnimateTo[1] },
           duration: this.speed
         })
-      ]).start(() => {});
+      ]).start();
     }
   }
 
@@ -406,6 +404,10 @@ export default class Swappables extends Component<{}> {
     let allMatches = this.allMatchesOnBoard();
 
     if (allMatches.length != 0) {
+      this.cancelTouches = true;
+      // Previousy swapped indexes stores the indexes that were most
+      // recently swapped to determine if turn reimbursement
+      // is necessary. This gets reset after match.
       this.previousSwappedIndexes = [];
       let duplicates = this.returnDuplicates(allMatches);
 
@@ -453,7 +455,7 @@ export default class Swappables extends Component<{}> {
           let u = match[0][0];
           let v = match[0][1];
           if (isJam(this.state.tileDataSource[u][v].imageType)) {
-            this.animateBeanMatch(match, [1, 10]);
+            this.animateBeanMatch(match, [2, 10]);
             this.props.animateTuffysHead();
             jamThisTurn += match.length;
           } else {
@@ -466,14 +468,9 @@ export default class Swappables extends Component<{}> {
         });
       }
 
-      // Everytime you get more than three in row you get more turns
-      if (beansThisTurn > 3) {
-        this.props.incrementTurns((beansThisTurn - 3) * 2);
-      }
-
       // Everytime you get jam match you get extra turns.
       if (jamThisTurn > 0) {
-        this.props.incrementTurns(jamThisTurn - 2);
+        this.props.incrementTurns(2 * (jamThisTurn - 2));
       }
 
       this.props.updateScore(beansThisTurn, jamThisTurn);
@@ -498,11 +495,12 @@ export default class Swappables extends Component<{}> {
 
         this.pushTileDataToComponent();
 
-        //this.animateValuesToLocationsSwapStyle();
         setTimeout(() => {
           if (this.allMatchesOnBoard().length != 0) {
             console.log("Hello! Calling update grid again");
             this.updateGrid();
+          } else {
+            this.cancelTouches = false;
           }
         }, 1200);
 
@@ -515,6 +513,7 @@ export default class Swappables extends Component<{}> {
     // !!! Make this take a "Type" and perform an animation based on the
     // type of update that's occured. ie swipe, condense, load.
 
+    console.log("component did update was called");
     switch (this.animationState) {
       case animationType.SWAP:
         this.animateValuesToLocationsSwapStyle();
@@ -728,15 +727,10 @@ export default class Swappables extends Component<{}> {
   animateValuesToLocationsSwapStyle() {
     this.state.tileDataSource.map((row, i) => {
       row.map((elem, j) => {
-        Animated.timing(
-          //Step 1
-          elem.location, //Step 2
-          {
-            toValue: { x: TILE_WIDTH * i, y: TILE_WIDTH * j },
-            duration: this.speed
-          } //Step 3
-        ).start();
-        //Animated.timing(elem.scale,{toValue: 1,duration: 1000}).start()
+        Animated.timing(elem.location, {
+          toValue: { x: TILE_WIDTH * i, y: TILE_WIDTH * j },
+          duration: this.speed
+        }).start();
       });
     });
   }
@@ -749,7 +743,7 @@ export default class Swappables extends Component<{}> {
           //Step 1
           elem.location, //Step 2
           { toValue: { x: TILE_WIDTH * i, y: TILE_WIDTH * j }, friction: 4 } //Step 3
-        ).start();
+        ).start(() => {});
         //Animated.timing(elem.scale,{toValue: 1,duration: 1000}).start()
       });
     });
@@ -767,16 +761,9 @@ export default class Swappables extends Component<{}> {
 
   render() {
     const config = {
-      velocityThreshold: 0.3,
-      directionalOffsetThreshold: 80
+      velocityThreshold: 0.1,
+      directionalOffsetThreshold: 20
     };
-
-    // Only swipe if cancelTouches is false.
-    let swipeOrNot = cancelTouches
-      ? (direction, state) => {
-          return;
-        }
-      : (direction, state) => this.onSwipe(direction, state);
 
     return (
       <View style={styles.container} onLayout={this.onLayout.bind(this)}>
@@ -784,7 +771,7 @@ export default class Swappables extends Component<{}> {
           <GestureRecognizer
             config={config}
             style={styles.gestureContainer}
-            onSwipe={(direction, state) => swipeOrNot(direction, state)}
+            onSwipe={(direction, state) => this.onSwipe(direction, state)}
           >
             {this.state.tileComponents}
           </GestureRecognizer>

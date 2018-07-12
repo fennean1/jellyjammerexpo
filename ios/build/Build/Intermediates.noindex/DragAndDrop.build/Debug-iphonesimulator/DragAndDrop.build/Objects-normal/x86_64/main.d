@@ -1,3 +1,3 @@
 dependencies: \
-  /Users/andrewfenner/Desktop/DragAndDrop/ios/DragAndDrop/main.m \
-  /Users/andrewfenner/Desktop/DragAndDrop/ios/DragAndDrop/AppDelegate.h
+  /Users/andrewfenner/Desktop/jelly-jam/ios/DragAndDrop/main.m \
+  /Users/andrewfenner/Desktop/jelly-jam/ios/DragAndDrop/AppDelegate.h
