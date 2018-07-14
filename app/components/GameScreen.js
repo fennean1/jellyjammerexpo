@@ -37,7 +37,7 @@ class GameScreen extends Component {
     super(props);
 
     this.tuffysHeadHeight = 50;
-    this.topMargin = 2.5 * TILE_WIDTH;
+    this.topMargin = 1.5 * TILE_WIDTH + windowHeight / 2 - 4 * TILE_WIDTH;
 
     this.gameOver = false;
 
@@ -208,12 +208,10 @@ class GameScreen extends Component {
           <View style={styles.topBar}>
             {backButton}
             <Text style={styles.text}>{this.state.totalScore} pts</Text>
-            <View style={styles.turnIndicator}>
-              <TurnIndicator
-                scale={this.state.turnScale}
-                text={this.state.numberOfMoves}
-              />
-            </View>
+            <TurnIndicator
+              scale={this.state.turnScale}
+              text={this.state.numberOfMoves}
+            />
           </View>
         );
       } else {
@@ -265,16 +263,19 @@ let pink = colored ? "#ff51f3" : "#ffffff";
 
 let styles = StyleSheet.create({
   backButton: {
-    flex: 1
+    flex: 1,
+    height: TILE_WIDTH,
+    justifyContent: "center"
   },
   backButtonImage: {
-    height: 0.8 * TILE_WIDTH,
-    width: 0.8 * TILE_WIDTH
+    height: 0.5 * TILE_WIDTH,
+    width: 0.5 * TILE_WIDTH
   },
   turnIndicator: {
     flex: 1,
     //backgroundColor: "blue",
-    alignItems: "center"
+    alignItems: "center",
+    justifyContent: "center"
   },
   backGroundImage: {
     width: "100%",
@@ -295,13 +296,15 @@ let styles = StyleSheet.create({
   gridContainer: {
     height: 5 * TILE_WIDTH,
     width: 5 * TILE_WIDTH,
-    alignItems: "center"
+    alignItems: "center",
+    marginTop: windowHeight / 2 - 4 * TILE_WIDTH
     //backgroundColor: blue
   },
   topBar: {
-    marginTop: TILE_WIDTH,
-    height: 1.5 * TILE_WIDTH,
-    flexDirection: "row"
+    marginTop: TILE_WIDTH / 2,
+    height: TILE_WIDTH,
+    flexDirection: "row",
+    justifyContent: "center"
     //backgroundColor: yellow
   },
   text: {
@@ -309,21 +312,22 @@ let styles = StyleSheet.create({
     //backgroundColor: "#ff51f3",
     textAlign: "center",
     //fontStyle: "ChalkBoard SE",
-    fontSize: 30
+    fontSize: TILE_WIDTH / 1.5,
+    alignItems: "center"
     //color       : '#fff'
   },
   backArrow: {
-    fontSize: 50,
-    fontSize: "ChalkBoard SE"
+    //fontSize: 50
+    //fontSize: "ChalkBoard SE"
   },
   leaveGameButton: {
     width: TILE_WIDTH,
-    height: TILE_WIDTH / 3
+    height: TILE_WIDTH / 2
   },
   scoreText: {
     alignItems: "center",
     textAlign: "center",
-    fontSize: TILE_WIDTH / 2
+    fontSize: TILE_WIDTH / 1.5
   },
   gameOverModal: {
     position: "absolute",

@@ -41,23 +41,23 @@ export default class TurnIndicator extends Component<{}> {
 
     return (
       <Animated.View style={[{ transform: [{ scale }] }]}>
-        <View>
-          <View>
-            <Image />
-          </View>
-          <Text style={styles.text}>{this.props.text}</Text>
-        </View>
+        <Text style={styles.text}>{this.props.text}</Text>
       </Animated.View>
     );
   }
 }
 
 let Window = Dimensions.get("window");
-let CIRCLE_RADIUS = 25;
+let windowSpan = Math.min(Window.width, Window.height);
+let TILE_WIDTH = windowSpan / 6;
+
+let windowWidth = Window.width;
+let windowHeight = Window.height;
+
 let styles = StyleSheet.create({
   text: {
     flex: 1,
-    fontSize: 35,
+    fontSize: TILE_WIDTH / 1.5,
     alignItems: "center",
     textAlign: "center"
     //backgroundColor: "blue"

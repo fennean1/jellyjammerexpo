@@ -278,7 +278,9 @@ export default class Swappables extends Component<{}> {
           toValue: { x: locationToAnimateTo[0], y: locationToAnimateTo[1] },
           duration: this.speed
         })
-      ]).start();
+      ]).start(() => {
+        this.animationState = animationType.FALL;
+      });
     }
   }
 
@@ -483,11 +485,6 @@ export default class Swappables extends Component<{}> {
 
       // Waits for "animate match" to complete.
       setTimeout(() => {
-        // Prepare the animation state
-        this.animationState = animationType.FALL;
-
-        // Recolor the matches with new random colors.
-
         allMatches.map(match => {
           this.recolorMatches(match);
           this.condenseColumns(match);
@@ -501,10 +498,9 @@ export default class Swappables extends Component<{}> {
             this.updateGrid();
           } else {
             this.cancelTouches = false;
+            this.animationState = animationType.SWAP;
           }
         }, 1200);
-
-        this.animationState = animationType.SWAP;
       }, 1200);
     }
   }
@@ -739,12 +735,14 @@ export default class Swappables extends Component<{}> {
   animateValuesToLocationsWaterfalStyle() {
     this.state.tileDataSource.map((row, i) => {
       row.map((elem, j) => {
-        Animated.spring(
-          //Step 1
-          elem.location, //Step 2
-          { toValue: { x: TILE_WIDTH * i, y: TILE_WIDTH * j }, friction: 4 } //Step 3
-        ).start(() => {});
-        //Animated.timing(elem.scale,{toValue: 1,duration: 1000}).start()
+        Animated.sequence([
+          Animated.delay(50),
+          Animated.spring(
+            //Step 1
+            elem.location, //Step 2
+            { toValue: { x: TILE_WIDTH * i, y: TILE_WIDTH * j }, friction: 4 } //Step 3
+          )
+        ]).start(() => {});
       });
     });
   }
