@@ -16,6 +16,10 @@ let floatingClouds = require("../assets/FloatingClouds.png");
 let CartoonTuffy = require("../assets/TuffyTile.png");
 let TopOfTuffysHead = require("../assets/TopOfTuffysHead.png");
 let BackArrow = require("../assets/BackArrow.png");
+let TurnIndicatorImage = require("../assets/TurnIndicatorImage.png");
+let SwipeInstructions = require("../assets/SwipeInstructionalScene.png");
+let BeanInstructions = require("../assets/BeanInstructionalScene.png");
+let JarInstructions = require("../assets/JarInstructionalScene.png");
 
 const imageType = {
   PINKJELLYBEAN: pjb,
@@ -34,7 +38,11 @@ const imageType = {
   YELLOWJAM: YellowJam,
   CARTOONTUFFY: CartoonTuffy,
   TOPOFTUFFYSHEAD: TopOfTuffysHead,
-  BACKARROW: BackArrow
+  BACKARROW: BackArrow,
+  TURNINDICATORIMAGE: TurnIndicatorImage,
+  SWIPEINSTRUCTIONS: SwipeInstructions,
+  BEANINSTRUCTIONS: BeanInstructions,
+  JARINSTRUCTIONS: JarInstructions
 };
 
 export const getJamJarFromBean = bean => {

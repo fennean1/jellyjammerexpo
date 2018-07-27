@@ -190,6 +190,8 @@ export default class Swappables extends Component<{}> {
 
   // data - the array of
 
+  restartGame() {}
+
   pushTileDataToComponent() {
     console.log("Pushing Tile Data");
 
