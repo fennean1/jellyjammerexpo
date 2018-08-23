@@ -202,6 +202,7 @@ class GameScreen extends Component {
   }
 
   justPlayGame() {
+    console.log("instructions completed");
     this.instructionsCompleted = true;
     this.hideModal();
   }
@@ -210,6 +211,7 @@ class GameScreen extends Component {
     const { navigate } = this.props.navigation;
 
     if (i == InstructionalScenes.length) {
+      this.instructionsCompleted = true;
       this.hideModal();
     }
 
@@ -254,7 +256,9 @@ class GameScreen extends Component {
   }
 
   nextInstructions() {
-    if (this.state.modalIndex == InstructionalScenes.length) {
+    console.log("next instructions clicked");
+    if (this.state.modalIndex == InstructionalScenes.length - 1) {
+      console.log("the instructions are complete");
       this.instructionsCompleted = true;
       this.hideModal();
     } else {
@@ -273,8 +277,6 @@ class GameScreen extends Component {
 
       this.setState({ modalIndex: this.state.modalIndex + 1 });
     }
-
-    console.log("nextInstructions Clicked");
   }
 
   render() {
@@ -342,7 +344,7 @@ class GameScreen extends Component {
         return (
           <View style={styles.topBar}>
             {backButton}
-            <Text style={styles.text}>""</Text>
+            <Text style={styles.text} />
             <TurnIndicator scale={this.state.turnScale} text={""} />
           </View>
         );
@@ -387,7 +389,7 @@ let white = "#ffffff";
 let styles = StyleSheet.create({
   gameModalContainer: {
     flex: 1,
-    flexDirection: "col",
+    flexDirection: "column",
     justifyContent: "center",
     width: 6 * TILE_WIDTH,
     height: 6 * TILE_WIDTH
